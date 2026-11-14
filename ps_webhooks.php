@@ -1,4 +1,5 @@
 <?php
+
 /**
  * PrestaShop Webhooks
  *
@@ -18,12 +19,12 @@ if (!defined('_PS_VERSION_')) {
     exit;
 }
 
-require dirname(__FILE__) . '/vendor/autoload.php';
+require_once __DIR__ . '/vendor/autoload.php';
 
 class Ps_Webhooks extends Module
 {
     /**
-     * Webhooks module constructor
+     * Паспорт модуля. PrestaShop создаёт этот объект, когда читает список модулей.
      */
     public function __construct()
     {
@@ -31,70 +32,76 @@ class Ps_Webhooks extends Module
         $this->author = 'Experto PrestaShop';
         $this->version = '1.2.0';
         $this->tab = 'others';
-        $this->ps_versions_compliancy = ['min' => '1.7', 'max' => _PS_VERSION_];
-        $this->bootstrap = true;
+        $this->need_instance = 0;
+        $this->ps_versions_compliancy = ['min' => '9.0.0', 'max' => _PS_VERSION_];
 
         parent::__construct();
 
-        $this->displayName = $this->l('PrestaShop Webhooks');
-        $this->description = $this->l('Trigger real-time notifications on PrestaShop events attaching object data in JSON format to the request.');
+        $this->displayName = $this->trans('PrestaShop Webhooks', [], 'Modules.Pswebhooks.Admin');
+        $this->description = $this->trans(
+            'Trigger real-time notifications on PrestaShop events attaching object data in JSON format to the request.',
+            [],
+            'Modules.Pswebhooks.Admin'
+        );
 
         if (!function_exists('curl_init')) {
-            $this->warning = $this->l('To be able to use this module, please activate cURL (PHP extension).');
+            $this->warning = $this->trans(
+                'To be able to use this module, please activate cURL (PHP extension).',
+                [],
+                'Modules.Pswebhooks.Admin'
+            );
         }
+
+        // Пункт меню. Вкладка создаётся при установке и удаляется при удалении модуля автоматически.
+        // Без route_name она пока ведёт на старый контроллер AdminWebhooks.
+        $this->tabs = [
+            [
+                'name' => 'Webhooks',
+                'class_name' => 'AdminWebhooks',
+                'parent_class_name' => 'AdminAdvancedParameters',
+                'visible' => true,
+            ],
+        ];
     }
 
     /**
-     * Install the module and create the data table
-     *
-     * @return bool True if installation succeeded, false otherwise
+     * Установка: регистрирует модуль и вкладку (parent::install), затем создаёт таблицу.
      */
-    public function install()
+    public function install(): bool
     {
-        $tab = new Tab();
-        $tab->class_name = 'AdminWebhooks';
-        $tab->id_parent = Tab::getIdFromClassName('AdminAdvancedParameters');
-        $tab->module = $this->name;
-        $languages = Language::getLanguages(false);
-        foreach ($languages as $language) {
-            $tab->name[$language['id_lang']] = $this->l('Webhooks');
-        }
-        $tab->add();
+        return parent::install() && $this->createTable();
+    }
 
-        $query = 'CREATE TABLE IF NOT EXISTS ' . _DB_PREFIX_ . 'webhook (
-            `id_webhook` int(10) unsigned NOT NULL Key AUTO_INCREMENT,
+    /**
+     * Удаление: убирает модуль и вкладку (parent::uninstall), затем удаляет таблицу вместе с вебхуками.
+     */
+    public function uninstall(): bool
+    {
+        return parent::uninstall() && $this->dropTable();
+    }
+
+    private function createTable(): bool
+    {
+        $sql = 'CREATE TABLE IF NOT EXISTS `' . _DB_PREFIX_ . 'webhook` (
+            `id_webhook` int(10) unsigned NOT NULL AUTO_INCREMENT,
             `action` varchar(10) NOT NULL,
             `entity` varchar(100) NOT NULL,
             `description` text,
             `url` varchar(200) NOT NULL,
-            `active` tinyint(1) NOT NULL DEFAULT 1
-        ) ENGINE=' . _MYSQL_ENGINE_ . ' DEFAULT CHARSET=utf8;';
-        Db::getInstance()->execute($query);
+            `active` tinyint(1) NOT NULL DEFAULT 1,
+            PRIMARY KEY (`id_webhook`)
+        ) ENGINE=' . _MYSQL_ENGINE_ . ' DEFAULT CHARSET=utf8mb4;';
 
-        return parent::install();
+        return (bool) Db::getInstance()->execute($sql);
     }
 
-    /**
-     * Uninstall the module and remove the data table
-     *
-     * @return bool True if uninstallation succeeded, false otherwise
-     */
-    public function uninstall()
+    private function dropTable(): bool
     {
-        $id_tab = Tab::getIdFromClassName('AdminWebhooks');
-        if ($id_tab) {
-            $tab = new Tab($id_tab);
-            $tab->delete();
-        }
-        Db::getInstance()->execute('DROP table ' . _DB_PREFIX_ . 'webhook');
-
-        return parent::uninstall();
+        return (bool) Db::getInstance()->execute('DROP TABLE IF EXISTS `' . _DB_PREFIX_ . 'webhook`');
     }
 
     /**
-     * Redirect to the webhooks administration page
-     *
-     * @return string Redirection URL
+     * Кнопка «Настроить» в списке модулей: перекидывает на страницу управления вебхуками.
      */
     public function getContent()
     {
@@ -102,17 +109,27 @@ class Ps_Webhooks extends Module
     }
 
     /**
-     * Handle dynamic method calls
+     * Сообщает PrestaShop, что модуль использует новую систему переводов.
+     */
+    public function isUsingNewTranslationSystem(): bool
+    {
+        return true;
+    }
+
+    /**
+     * Перехват хуков вида hookActionObject...After.
+     * PHP вызывает __call, когда вызванного метода в классе нет.
      *
-     * @param string $name Name of the called method
-     * @param array $params Parameters passed to the method
-     * @return mixed Result of the call
+     * @param string $name   Имя вызванного метода, например hookActionObjectProductAddAfter
+     * @param array  $params Аргументы вызова
      */
     public function __call($name, $params)
     {
-        if (strpos($name, 'hookActionObject') !== false) {
+        if (str_starts_with($name, 'hookActionObject')) {
             return $this->executeHook(str_replace(['hookActionObject', 'After'], '', $name), $params[0]);
         }
+
+        return null;
     }
 
     /**
@@ -146,7 +163,7 @@ class Ps_Webhooks extends Module
      * @param string $entity The type of entity concerned
      * @param object $object The object to send
      * @param bool $test If true, performs a connection test
-    * @return int|bool HTTP code or false on error
+     * @return int|bool HTTP code or false on error
      */
     public static function executeUrl($url, $action, $entity, $object, $test = false)
     {
