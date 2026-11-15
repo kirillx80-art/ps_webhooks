@@ -157,9 +157,4 @@ class Ps_Webhooks extends Module
             $sender->send($webhook->url, $webhook->action, $webhook->entity, $object);
         }
     }
-
-    public function isMcpCompliant(): bool
-    {
-        return true;
-    }
 }
