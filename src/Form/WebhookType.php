@@ -19,6 +19,7 @@ declare(strict_types=1);
 
 namespace PrestaShop\Module\PsWebhooks\Form;
 
+use PrestaShop\Module\PsWebhooks\Service\EntityCatalog;
 use Symfony\Component\Form\AbstractType;
 use Symfony\Component\Form\Extension\Core\Type\CheckboxType;
 use Symfony\Component\Form\Extension\Core\Type\ChoiceType;
@@ -29,7 +30,6 @@ use Symfony\Component\OptionsResolver\OptionsResolver;
 use Symfony\Component\Validator\Constraints\Length;
 use Symfony\Component\Validator\Constraints\NotBlank;
 use Symfony\Component\Validator\Constraints\Url;
-use WebserviceRequest;
 
 /**
  * Форма добавления и редактирования вебхука: поля и правила проверки.
@@ -79,21 +79,13 @@ final class WebhookType extends AbstractType
     }
 
     /**
-     * Классы, для которых имеет смысл делать вебхуки: те же, что отдаёт веб-сервис PrestaShop.
+     * Варианты для выпадающего списка сущностей: «Product» => «Product».
      *
      * @return array<string, string>
      */
     private function entityChoices(): array
     {
-        $classes = [];
-        foreach (WebserviceRequest::getResources() as $resource) {
-            if (!empty($resource['class'])) {
-                $classes[] = $resource['class'];
-            }
-        }
-
-        $classes = array_unique($classes);
-        sort($classes);
+        $classes = (new EntityCatalog())->getClasses();
 
         return array_combine($classes, $classes);
     }

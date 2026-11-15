@@ -23,9 +23,13 @@ use PrestaShop\Module\PsWebhooks\Entity\Webhook;
 use PrestaShop\Module\PsWebhooks\Form\WebhookType;
 use PrestaShop\Module\PsWebhooks\Repository\WebhookRepository;
 use PrestaShop\Module\PsWebhooks\Service\HookSubscriber;
+use PrestaShop\Module\PsWebhooks\Service\WebhookImporter;
 use PrestaShop\Module\PsWebhooks\Service\WebhookSender;
 use PrestaShopBundle\Controller\Admin\PrestaShopAdminController;
 use PrestaShopBundle\Security\Attribute\AdminSecurity;
+use Symfony\Component\HttpFoundation\File\UploadedFile;
+use Symfony\Component\HttpFoundation\HeaderUtils;
+use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -40,6 +44,8 @@ class WebhookController extends PrestaShopAdminController
 {
     private const DOMAIN = 'Modules.Pswebhooks.Admin';
     private const FORM_TEMPLATE = '@Modules/ps_webhooks/views/templates/Admin/Webhook/form.html.twig';
+    private const MAX_IMPORT_BYTES = 1000000;
+    private const MAX_SHOWN_ERRORS = 5;
 
     /**
      * Список вебхуков.
@@ -210,6 +216,76 @@ class WebhookController extends PrestaShopAdminController
             $subscriber->sync();
             $this->addFlash('success', $this->trans('All webhooks deleted.', [], self::DOMAIN));
         }
+
+        return $this->redirectToRoute('ps_webhooks_index');
+    }
+
+    /**
+     * Скачивает все вебхуки одним файлом webhooks.json.
+     */
+    #[AdminSecurity("is_granted('read', 'AdminWebhooks')", redirectRoute: 'ps_webhooks_index')]
+    public function exportAction(WebhookRepository $repository): Response
+    {
+        $rows = array_map(
+            static fn(Webhook $webhook): array => [
+                'action' => $webhook->action,
+                'entity' => $webhook->entity,
+                'url' => $webhook->url,
+                'description' => $webhook->description,
+                'active' => $webhook->active,
+            ],
+            $repository->findAll()
+        );
+
+        $response = new JsonResponse($rows);
+        $response->setEncodingOptions(JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        $response->headers->set(
+            'Content-Disposition',
+            HeaderUtils::makeDisposition(HeaderUtils::DISPOSITION_ATTACHMENT, 'webhooks.json')
+        );
+
+        return $response;
+    }
+
+    /**
+     * Принимает загруженный файл webhooks.json и добавляет вебхуки из него.
+     */
+    #[AdminSecurity("is_granted('create', 'AdminWebhooks')", redirectRoute: 'ps_webhooks_index')]
+    public function importAction(
+        Request $request,
+        WebhookImporter $importer,
+        HookSubscriber $subscriber
+    ): Response {
+        if (!$this->hasValidToken($request, 'ps_webhooks_import')) {
+            return $this->redirectToRoute('ps_webhooks_index');
+        }
+
+        $file = $request->files->get('import_json');
+        if (!$file instanceof UploadedFile || !$file->isValid() || (int) $file->getSize() > self::MAX_IMPORT_BYTES) {
+            $this->addFlash('error', $this->trans('No file uploaded or invalid file.', [], self::DOMAIN));
+
+            return $this->redirectToRoute('ps_webhooks_index');
+        }
+
+        $result = $importer->import((string) file_get_contents($file->getPathname()));
+
+        if ($result['errors'] !== []) {
+            foreach (array_slice($result['errors'], 0, self::MAX_SHOWN_ERRORS) as $error) {
+                $this->addFlash('error', $this->trans($error, [], self::DOMAIN));
+            }
+            if (count($result['errors']) > self::MAX_SHOWN_ERRORS) {
+                $this->addFlash('error', $this->trans('There are more errors in the file.', [], self::DOMAIN));
+            }
+
+            return $this->redirectToRoute('ps_webhooks_index');
+        }
+
+        $subscriber->sync();
+        $this->addFlash('success', $this->trans(
+            'Webhooks imported: %imported%, skipped as duplicates: %skipped%',
+            ['%imported%' => $result['imported'], '%skipped%' => $result['skipped']],
+            self::DOMAIN
+        ));
 
         return $this->redirectToRoute('ps_webhooks_index');
     }

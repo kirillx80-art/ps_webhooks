@@ -16,6 +16,10 @@
             </span>
             <span>
                 {% if webhooks|length > 0 %}
+                    <a class="btn btn-outline-secondary" href="{{ path('ps_webhooks_export') }}">
+                        <i class="material-icons">download</i>
+                        {{ 'Export JSON'|trans({}, 'Modules.Pswebhooks.Admin') }}
+                    </a>
                     <form method="post" class="d-inline"
                           action="{{ path('ps_webhooks_delete_all') }}"
                           onsubmit="return confirm('{{ 'Delete all webhooks?'|trans({}, 'Modules.Pswebhooks.Admin')|e('js') }}');">
@@ -102,6 +106,26 @@
                     {% endfor %}
                 </tbody>
             </table>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <i class="material-icons">upload</i>
+            {{ 'Import Webhooks'|trans({}, 'Modules.Pswebhooks.Admin') }}
+        </div>
+        <div class="card-body">
+            <form method="post" enctype="multipart/form-data" action="{{ path('ps_webhooks_import') }}">
+                <input type="hidden" name="_csrf_token" value="{{ csrf_token('ps_webhooks_import') }}">
+                <div class="form-group">
+                    <label for="import_json">{{ 'JSON file'|trans({}, 'Modules.Pswebhooks.Admin') }}</label>
+                    <input type="file" class="form-control-file" id="import_json" name="import_json"
+                           accept=".json,application/json" required>
+                </div>
+                <button type="submit" class="btn btn-primary">
+                    {{ 'Upload and Import'|trans({}, 'Modules.Pswebhooks.Admin') }}
+                </button>
+            </form>
         </div>
     </div>
 {% endblock %}

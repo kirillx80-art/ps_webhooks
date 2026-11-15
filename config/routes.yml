@@ -42,3 +42,13 @@ ps_webhooks_delete_all:
   path: /ps_webhooks/delete-all
   methods: POST
   controller: PrestaShop\Module\PsWebhooks\Controller\Admin\WebhookController::deleteAllAction
+
+ps_webhooks_export:
+  path: /ps_webhooks/export
+  methods: GET
+  controller: PrestaShop\Module\PsWebhooks\Controller\Admin\WebhookController::exportAction
+
+ps_webhooks_import:
+  path: /ps_webhooks/import
+  methods: POST
+  controller: PrestaShop\Module\PsWebhooks\Controller\Admin\WebhookController::importAction
