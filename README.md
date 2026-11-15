@@ -1,55 +1,144 @@
-[![Minimum PHP Version](https://img.shields.io/badge/php-%3E%3D%205.6.1-8892BF.svg)](https://php.net/)
-[![Minimum PrestaShop Compatibility](https://img.shields.io/badge/prestashop-%3E%3D%201.7-8892BF.svg)](https://doc.prestashop.com/pages/viewpage.action?pageId=54264853)
-[![GitHub release](https://img.shields.io/github/v/release/prestaalba/ps_webhooks)](https://github.com/prestaalba/ps_webhooks/releases)
+# PrestaShop Webhooks (переработанная версия 2.0.0)
 
-# PrestaShop Webhooks
+Модуль для PrestaShop 9. Когда в магазине создаётся, изменяется или удаляется объект (товар, заказ, категория и т. д.), модуль отправляет на указанный адрес запрос POST с данными объекта в формате JSON. Типичное применение: уведомления в мессенджер, запуск сценариев в n8n, передача заказов во внешние системы.
 
-Trigger real-time notifications on PrestaShop events attaching object data in JSON format to the request.
+> **Происхождение.** Это переработка модуля [prestaalba/ps_webhooks](https://github.com/prestaalba/ps_webhooks) (в заголовках файлов автором указан Experto PrestaShop; в проекте участвовали PrestaAlba, Nicolas Dabène и Thomas Roux). Авторство и лицензия оригинала (AFL 3.0) сохранены.
+> Переработка выполнена @kirillx80-art при участии [Claude](https://claude.ai) (Anthropic): код написал ИИ-ассистент, автор разбирал его, принимал решения и проверял работу на PrestaShop 9.2.0.
 
-## Install
+## Требования
 
-[Donwload a zip release](https://github.com/prestaalba/ps_webhooks/releases) and install it like any other module.
+- PrestaShop 9.0 или новее
+- PHP 8.1 или новее
 
-## Use
+## Установка
 
-Go to the module configuration page in your PrestaShop back office. Create as many webhooks as needed by selecting the PrestaShop action and entity you want to monitor, and defining the target URL. Whenever the event is triggered, the related data will be sent in real time via a POST request, using the following JSON format example:
+1. Собери архив из репозитория. Папка внутри архива обязана называться `ps_webhooks`; кнопка GitHub «Download ZIP» создаёт папку с другим именем, и PrestaShop такой модуль не примет.
+
+   ```
+   git archive --format=zip --prefix=ps_webhooks/ -o ps_webhooks.zip HEAD
+   ```
+
+2. Админка → Модули → Диспетчер модулей → «Загрузить модуль» → `ps_webhooks.zip`.
+3. Страница модуля: Расширенные параметры → Webhooks (или кнопка «Настроить» в списке модулей).
+
+## Обновление с оригинального модуля
+
+Деинсталляция удаляет таблицу вместе со всеми вебхуками, поэтому сначала сохрани их:
+
+1. В старом модуле нажми «Export JSON» и сохрани файл. В нём адреса получателей, храни его как секрет.
+2. Деинсталлируй старый модуль и удали его файлы.
+3. Установи эту версию.
+4. Загрузи сохранённый файл в блоке «Import Webhooks». Формат оригинала принимается. Подписки на хуки создаются автоматически.
+
+## Использование
+
+Вебхук описывается четырьмя полями:
+
+| Поле    | Что значит                                                         |
+| ------- | ------------------------------------------------------------------ |
+| Action  | событие: Created, Updated или Deleted                              |
+| Entity  | тип объекта PrestaShop: `Product`, `Order`, `Category` и т. д.     |
+| URL     | адрес получателя, только `http://` или `https://`, до 200 символов |
+| Enabled | включён ли вебхук                                                  |
+
+На странице модуля доступны кнопки: Add new, Edit, Enable/Disable, Delete, Delete all, **Test** (отправляет на адрес пустой объект выбранной сущности и показывает код ответа), Export JSON и блок импорта.
+
+Права на страницу настраиваются по вкладке «Webhooks» (read, create, update, delete) в разделе прав сотрудников.
+
+## Формат запроса
 
 ```json
 {
-  "action": "update",
-  "entity": "Customer",
-  "data": {
-    "id": 42,
-    "id_gender": 1,
-    "id_default_group": 3,
-    "id_lang": null,
-    "company": "Rolige",
-    "firstname": "Wilson",
-    "lastname": "Alba",
-    "email": "wilson@example.com",
-    "passwd": "$2y$10$abc123...",
-    "birthday": "1990-05-20",
-    "newsletter": true,
-    "optin": false,
-    "active": true,
-    "is_guest": false,
-    "deleted": false,
-    "date_add": "2023-01-15 10:00:00",
-    "date_upd": "2025-08-20 05:50:00"
-  }
+  "action": "add",
+  "entity": "Product",
+  "data": { "id": "20", "price": "13.900000", "...": "все поля объекта" }
 }
 ```
 
-If you need to programmatically add or update custom data to the PrestaShop entity before the webhook is sent, you can use the `actionObjectWebhookSendBefore` hook. The hook is called in the origin file as follows:
+Из объекта убираются поля `passwd`, `secure_key` и `password`. Остальные поля отправляются все.
+
+## Точка расширения
+
+Перед отправкой модуль вызывает хук `actionObjectWebhookSendBefore` с объектом в `$params['object']`. Другой модуль может подписаться на него и дописать в объект свои поля, они попадут в `data`:
 
 ```php
-Hook::exec('actionObjectWebhookSendBefore', ['object' => $object]);
+public function hookActionObjectWebhookSendBefore(array $params)
+{
+    if ($params['object'] instanceof Order) {
+        $params['object']->my_field = 'value';
+    }
+}
 ```
 
-## Contribute
+Этот хук есть и в оригинале и работает так же.
 
-Any contributions are very welcome :)
+## Формат экспорта и импорта
 
-## License
+```json
+[
+  {
+    "action": "add",
+    "entity": "Order",
+    "url": "https://example.com/hook",
+    "description": "Новый заказ",
+    "active": true
+  }
+]
+```
 
-This module is released under an AFL license.
+Импорт проверяет весь файл целиком: если в нём есть хотя бы одна ошибка, не сохраняется ничего. Допускается до 500 строк и 1 МБ. Повторный импорт того же файла не создаёт дубликатов.
+
+## Что нужно знать
+
+- Отправка синхронная: сохранение объекта ждёт ответа получателя, до 3 секунд на каждый вебхук.
+- Перенаправления не выполняются. Указывай окончательный адрес.
+- Отправляются все поля объекта. Вебхуки на `Customer` и `Address` передают персональные данные, создавай их, только если получатель под твоим контролем.
+- Если отправить не удалось, запись об этом появится в Расширенные параметры → Логи, а сохранение объекта продолжится.
+- Интерфейс пока на английском.
+- Не реализованы: повторные попытки отправки, очередь, подпись запросов.
+
+## Изменения по сравнению с оригиналом (1.2.0)
+
+**Архитектура**
+
+- Админка переписана со старого `ModuleAdminController` и Smarty на контроллер Symfony и шаблоны Twig. Маршруты в `config/routes.yml`, сервисы в `config/services.yml`.
+- Модель `ObjectModel` заменена обычным классом `Entity\Webhook` и репозиторием `Repository\WebhookRepository`, который единственный работает с таблицей.
+- Пункт меню описан декларативно через `$this->tabs` и ведёт на маршрут Symfony.
+- Отправка вынесена в класс `Service\WebhookSender` и выполняется через Symfony HttpClient вместо cURL.
+- Один запрос к базе вместо отдельного запроса на каждый найденный вебхук.
+- Имя хука разбирается регулярным выражением, и вебхук ищется по точному совпадению сущности и действия (раньше по склейке полей `CONCAT`).
+
+**Подписки на хуки**
+
+- Новый класс `Service\HookSubscriber` приводит подписки модуля в соответствие с таблицей вебхуков после любого изменения. Это исправляет три ошибки оригинала: удаление одного вебхука больше не отключает другие вебхуки на то же событие; подписки не копятся, если изменить событие у существующего вебхука; импорт подписывает на хуки (раньше импортированные вебхуки не работали, пока их не пересохранят вручную).
+
+**Безопасность**
+
+- Адрес проверяется на `http`/`https`; сущность выбирается только из списка.
+- Проверка сертификата получателя всегда включена (раньше зависела от того, открыт ли сам магазин по HTTPS).
+- Все изменяющие действия (включить, проверить, удалить, удалить всё, импорт) выполняются только запросом POST и защищены CSRF-токеном; раньше «удалить всё» вызывалось обычной ссылкой.
+- Доступ к страницам ограничен правами сотрудников (`#[AdminSecurity]`).
+- Кнопка Test проверяет, что класс сущности наследует `ObjectModel`, до создания объекта.
+- Ошибка отправки пишется в журнал PrestaShop и не прерывает сохранение товара или заказа.
+
+**Импорт и экспорт**
+
+- Импорт проверяет файл целиком, ограничен по размеру и числу строк, пропускает дубликаты, не показывает в сообщениях содержимое файла.
+- Экспорт отдаёт файл без служебных идентификаторов.
+
+**Не перенесено из оригинала**
+
+- Интеграция с MCP-сервером PrestaShop (`src/WebhookMcpTools.php` и `isMcpCompliant()`). Она нужна только при установленном модуле MCP-сервера. Инструменты оригинала вызывали классы `Webhook` и `Ps_Webhooks::executeUrl()`, которых в этой версии нет, поэтому их пришлось бы переписать.
+- Переводы `es.php` и `fr.php` в старом формате: интерфейс использует новую систему переводов.
+- Проверка наличия расширения cURL: отправка идёт через Symfony HttpClient.
+
+**Прочее**
+
+- Требования: PrestaShop 9.0+ (в оригинале 1.7), PHP 8.1+.
+- `install()` и `uninstall()` возвращают реальный результат; таблица создаётся с явным `PRIMARY KEY` и кодировкой `utf8mb4`.
+- `composer.json` написан заново под новую структуру: автозагрузка `src/` по PSR-4, внешних зависимостей нет (HttpClient берётся из ядра PrestaShop).
+- Хук `actionObjectWebhookSendBefore` сохранён без изменений.
+
+## Лицензия
+
+Academic Free License 3.0 (AFL-3.0), как в оригинале. Заголовки с авторством Experto PrestaShop в файлах сохранены.

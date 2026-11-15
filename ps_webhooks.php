@@ -15,6 +15,8 @@
  * @license   https://opensource.org/licenses/AFL-3.0  Academic Free License ("AFL") v. 3.0
  */
 
+declare(strict_types=1);
+
 use PrestaShop\Module\PsWebhooks\Repository\WebhookRepository;
 use PrestaShop\Module\PsWebhooks\Service\WebhookSender;
 
@@ -33,7 +35,7 @@ class Ps_Webhooks extends Module
     {
         $this->name = 'ps_webhooks';
         $this->author = 'Experto PrestaShop';
-        $this->version = '1.2.0';
+        $this->version = '2.0.0';
         $this->tab = 'others';
         $this->need_instance = 0;
         $this->ps_versions_compliancy = ['min' => '9.0.0', 'max' => _PS_VERSION_];
