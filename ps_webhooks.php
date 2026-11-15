@@ -18,7 +18,7 @@
 declare(strict_types=1);
 
 use PrestaShop\Module\PsWebhooks\Repository\WebhookRepository;
-use PrestaShop\Module\PsWebhooks\Service\WebhookSender;
+use PrestaShop\Module\PsWebhooks\Service\WebhookDispatcher;
 
 if (!defined('_PS_VERSION_')) {
     exit;
@@ -133,7 +133,11 @@ class Ps_Webhooks extends Module
     }
 
     /**
-     * Находит вебхуки, подписанные на событие, и отправляет им данные объекта.
+     * Находит вебхуки, подписанные на событие, и ставит их в очередь на отправку.
+     *
+     * Сразу ничего не отправляется: PrestaShop может вызвать один и тот же хук несколько раз за одно действие,
+     * а получателю нужно одно событие с итоговым состоянием объекта. Отправка выполняется
+     * в конце запроса (см. Service\WebhookDispatcher).
      *
      * @param string $entity Класс объекта, например Product
      * @param string $action add, update или delete
@@ -151,12 +155,8 @@ class Ps_Webhooks extends Module
             return;
         }
 
-        // Точка расширения: другие модули могут подписаться и изменить объект перед отправкой
-        Hook::exec('actionObjectWebhookSendBefore', ['object' => $object]);
-
-        $sender = new WebhookSender();
         foreach ($webhooks as $webhook) {
-            $sender->send($webhook->url, $webhook->action, $webhook->entity, $object);
+            WebhookDispatcher::enqueue($webhook, $object);
         }
     }
 }

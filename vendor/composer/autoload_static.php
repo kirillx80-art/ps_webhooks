@@ -28,6 +28,7 @@ class ComposerStaticInit1153e73085d490d1f99e9a1fcba3f80f
         'PrestaShop\\Module\\PsWebhooks\\Repository\\WebhookRepository' => __DIR__ . '/../..' . '/src/Repository/WebhookRepository.php',
         'PrestaShop\\Module\\PsWebhooks\\Service\\EntityCatalog' => __DIR__ . '/../..' . '/src/Service/EntityCatalog.php',
         'PrestaShop\\Module\\PsWebhooks\\Service\\HookSubscriber' => __DIR__ . '/../..' . '/src/Service/HookSubscriber.php',
+        'PrestaShop\\Module\\PsWebhooks\\Service\\WebhookDispatcher' => __DIR__ . '/../..' . '/src/Service/WebhookDispatcher.php',
         'PrestaShop\\Module\\PsWebhooks\\Service\\WebhookImporter' => __DIR__ . '/../..' . '/src/Service/WebhookImporter.php',
         'PrestaShop\\Module\\PsWebhooks\\Service\\WebhookSender' => __DIR__ . '/../..' . '/src/Service/WebhookSender.php',
     );

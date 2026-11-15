@@ -13,6 +13,7 @@ return array(
     'PrestaShop\\Module\\PsWebhooks\\Repository\\WebhookRepository' => $baseDir . '/src/Repository/WebhookRepository.php',
     'PrestaShop\\Module\\PsWebhooks\\Service\\EntityCatalog' => $baseDir . '/src/Service/EntityCatalog.php',
     'PrestaShop\\Module\\PsWebhooks\\Service\\HookSubscriber' => $baseDir . '/src/Service/HookSubscriber.php',
+    'PrestaShop\\Module\\PsWebhooks\\Service\\WebhookDispatcher' => $baseDir . '/src/Service/WebhookDispatcher.php',
     'PrestaShop\\Module\\PsWebhooks\\Service\\WebhookImporter' => $baseDir . '/src/Service/WebhookImporter.php',
     'PrestaShop\\Module\\PsWebhooks\\Service\\WebhookSender' => $baseDir . '/src/Service/WebhookSender.php',
 );
