@@ -1,0 +1,53 @@
+{% extends '@PrestaShop/Admin/layout.html.twig' %}
+
+{% block content %}
+    {# Подписи действий: в базе хранится add/update/delete, человеку показываем слова #}
+    {% set actionLabels = {
+        'add': 'Created'|trans({}, 'Modules.Pswebhooks.Admin'),
+        'update': 'Updated'|trans({}, 'Modules.Pswebhooks.Admin'),
+        'delete': 'Deleted'|trans({}, 'Modules.Pswebhooks.Admin')
+    } %}
+
+    <div class="card">
+        <div class="card-header">
+            <i class="material-icons">webhook</i>
+            {{ 'Webhooks'|trans({}, 'Modules.Pswebhooks.Admin') }} ({{ webhooks|length }})
+        </div>
+        <div class="card-body">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>{{ 'Action'|trans({}, 'Modules.Pswebhooks.Admin') }}</th>
+                        <th>{{ 'Entity'|trans({}, 'Modules.Pswebhooks.Admin') }}</th>
+                        <th>{{ 'URL'|trans({}, 'Modules.Pswebhooks.Admin') }}</th>
+                        <th>{{ 'Description'|trans({}, 'Modules.Pswebhooks.Admin') }}</th>
+                        <th>{{ 'Enabled'|trans({}, 'Modules.Pswebhooks.Admin') }}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for webhook in webhooks %}
+                        <tr>
+                            <td>{{ webhook.id }}</td>
+                            <td>{{ actionLabels[webhook.action]|default(webhook.action) }}</td>
+                            <td>{{ webhook.entity }}</td>
+                            <td>{{ webhook.url }}</td>
+                            <td>{{ webhook.description|default('—') }}</td>
+                            <td>
+                                {% if webhook.active %}
+                                    <i class="material-icons text-success">check</i>
+                                {% else %}
+                                    <i class="material-icons text-danger">close</i>
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% else %}
+                        <tr>
+                            <td colspan="6">{{ 'No webhooks configured yet.'|trans({}, 'Modules.Pswebhooks.Admin') }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+{% endblock %}

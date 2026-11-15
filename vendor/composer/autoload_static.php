@@ -22,6 +22,7 @@ class ComposerStaticInit1153e73085d490d1f99e9a1fcba3f80f
 
     public static $classMap = array (
         'Composer\\InstalledVersions' => __DIR__ . '/..' . '/composer/InstalledVersions.php',
+        'PrestaShop\\Module\\PsWebhooks\\Controller\\Admin\\WebhookController' => __DIR__ . '/../..' . '/src/Controller/Admin/WebhookController.php',
         'PrestaShop\\Module\\PsWebhooks\\Entity\\Webhook' => __DIR__ . '/../..' . '/src/Entity/Webhook.php',
         'PrestaShop\\Module\\PsWebhooks\\Repository\\WebhookRepository' => __DIR__ . '/../..' . '/src/Repository/WebhookRepository.php',
         'PrestaShop\\Module\\PsWebhooks\\Service\\WebhookSender' => __DIR__ . '/../..' . '/src/Service/WebhookSender.php',

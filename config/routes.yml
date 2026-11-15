@@ -1,0 +1,6 @@
+# Таблица маршрутов модуля: «по такому адресу запусти такой метод».
+# YAML устроен отступами: вложенность задаётся двумя пробелами (табуляция не допускается).
+ps_webhooks_index:
+  path: /ps_webhooks
+  methods: GET
+  controller: PrestaShop\Module\PsWebhooks\Controller\Admin\WebhookController::indexAction

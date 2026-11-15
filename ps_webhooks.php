@@ -15,6 +15,7 @@
  * @license   https://opensource.org/licenses/AFL-3.0  Academic Free License ("AFL") v. 3.0
  */
 
+use PrestaShop\Module\PsWebhooks\Repository\WebhookRepository;
 use PrestaShop\Module\PsWebhooks\Service\WebhookSender;
 
 if (!defined('_PS_VERSION_')) {
@@ -47,12 +48,13 @@ class Ps_Webhooks extends Module
         );
 
         // Пункт меню. Вкладка создаётся при установке и удаляется при удалении модуля автоматически.
-        // Пока без route_name: она ведёт на старый контроллер AdminWebhooks.
+        // route_name связывает пункт меню с маршрутом из config/routes.yml.
         $this->tabs = [
             [
                 'name' => 'Webhooks',
                 'class_name' => 'AdminWebhooks',
                 'parent_class_name' => 'AdminAdvancedParameters',
+                'route_name' => 'ps_webhooks_index',
                 'visible' => true,
             ],
         ];
@@ -95,11 +97,11 @@ class Ps_Webhooks extends Module
     }
 
     /**
-     * Кнопка «Настроить» в списке модулей: перекидывает на страницу управления вебхуками.
+     * Кнопка «Настроить» в списке модулей: перекидывает на Symfony-страницу модуля.
      */
     public function getContent()
     {
-        Tools::redirectAdmin($this->context->link->getAdminLink('AdminWebhooks'));
+        Tools::redirectAdmin($this->get('router')->generate('ps_webhooks_index'));
     }
 
     /**
@@ -111,19 +113,18 @@ class Ps_Webhooks extends Module
     }
 
     /**
-     * Перехват хуков вида hookActionObject...After.
+     * Перехват хуков вида hookActionObject<Сущность><Add|Update|Delete>After.
      * PHP вызывает __call, когда вызванного метода в классе нет.
      *
-     * @param string $name   Имя вызванного метода, например hookActionObjectProductAddAfter
+     * Пример: hookActionObjectProductAddAfter -> сущность Product, действие add.
+     *
+     * @param string $name   Имя вызванного метода
      * @param array  $params Аргументы вызова: $params[0] — массив параметров хука
      */
     public function __call($name, $params)
     {
-        if (str_starts_with($name, 'hookActionObject')) {
-            $this->executeHook(
-                str_replace(['hookActionObject', 'After'], '', $name),
-                $params[0] ?? []
-            );
+        if (preg_match('/^hookActionObject(.+)(Add|Update|Delete)After$/', $name, $matches)) {
+            $this->executeHook($matches[1], strtolower($matches[2]), $params[0] ?? []);
         }
 
         return null;
@@ -132,13 +133,14 @@ class Ps_Webhooks extends Module
     /**
      * Находит вебхуки, подписанные на событие, и отправляет им данные объекта.
      *
-     * @param string $hookName Имя события без обрамления, например ProductAdd
-     * @param array  $params   Параметры хука, объект лежит под ключом 'object'
+     * @param string $entity Класс объекта, например Product
+     * @param string $action add, update или delete
+     * @param array  $params Параметры хука, объект лежит под ключом 'object'
      */
-    public function executeHook(string $hookName, array $params): void
+    public function executeHook(string $entity, string $action, array $params): void
     {
-        $idsWebhooks = Webhook::getIdsByActionEntity($hookName);
-        if (empty($idsWebhooks)) {
+        $webhooks = (new WebhookRepository())->findActiveByEvent($entity, $action);
+        if (empty($webhooks)) {
             return;
         }
 
@@ -151,8 +153,7 @@ class Ps_Webhooks extends Module
         Hook::exec('actionObjectWebhookSendBefore', ['object' => $object]);
 
         $sender = new WebhookSender();
-        foreach ($idsWebhooks as $idWebhook) {
-            $webhook = new Webhook((int) $idWebhook);
+        foreach ($webhooks as $webhook) {
             $sender->send($webhook->url, $webhook->action, $webhook->entity, $object);
         }
     }

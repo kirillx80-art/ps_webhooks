@@ -1,0 +1,15 @@
+services:
+  # Настройки по умолчанию для всех сервисов ниже
+  _defaults:
+    autowire: true # зависимости подставляются автоматически по типу аргумента
+    autoconfigure: true # служебные теги выставляются по типу класса
+    public: true # сервис доступен из контейнера
+
+  # Все классы из папки контроллеров становятся контроллерами-сервисами
+  PrestaShop\Module\PsWebhooks\Controller\Admin\:
+    resource: "../src/Controller/Admin/"
+    tags: ["controller.service_arguments"] # разрешает подставлять сервисы в аргументы методов
+
+  # Репозиторий: контроллер получит его автоматически
+  PrestaShop\Module\PsWebhooks\Repository\:
+    resource: "../src/Repository/"
