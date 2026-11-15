@@ -9,6 +9,8 @@ return array(
     'Composer\\InstalledVersions' => $vendorDir . '/composer/InstalledVersions.php',
     'PrestaShop\\Module\\PsWebhooks\\Controller\\Admin\\WebhookController' => $baseDir . '/src/Controller/Admin/WebhookController.php',
     'PrestaShop\\Module\\PsWebhooks\\Entity\\Webhook' => $baseDir . '/src/Entity/Webhook.php',
+    'PrestaShop\\Module\\PsWebhooks\\Form\\WebhookType' => $baseDir . '/src/Form/WebhookType.php',
     'PrestaShop\\Module\\PsWebhooks\\Repository\\WebhookRepository' => $baseDir . '/src/Repository/WebhookRepository.php',
+    'PrestaShop\\Module\\PsWebhooks\\Service\\HookSubscriber' => $baseDir . '/src/Service/HookSubscriber.php',
     'PrestaShop\\Module\\PsWebhooks\\Service\\WebhookSender' => $baseDir . '/src/Service/WebhookSender.php',
 );

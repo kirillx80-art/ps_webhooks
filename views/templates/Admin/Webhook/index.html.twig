@@ -9,9 +9,15 @@
     } %}
 
     <div class="card">
-        <div class="card-header">
-            <i class="material-icons">webhook</i>
-            {{ 'Webhooks'|trans({}, 'Modules.Pswebhooks.Admin') }} ({{ webhooks|length }})
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <span>
+                <i class="material-icons">webhook</i>
+                {{ 'Webhooks'|trans({}, 'Modules.Pswebhooks.Admin') }} ({{ webhooks|length }})
+            </span>
+            <a class="btn btn-primary" href="{{ path('ps_webhooks_create') }}">
+                <i class="material-icons">add_circle_outline</i>
+                {{ 'Add new'|trans({}, 'Modules.Pswebhooks.Admin') }}
+            </a>
         </div>
         <div class="card-body">
             <table class="table">
@@ -23,6 +29,7 @@
                         <th>{{ 'URL'|trans({}, 'Modules.Pswebhooks.Admin') }}</th>
                         <th>{{ 'Description'|trans({}, 'Modules.Pswebhooks.Admin') }}</th>
                         <th>{{ 'Enabled'|trans({}, 'Modules.Pswebhooks.Admin') }}</th>
+                        <th></th>
                     </tr>
                 </thead>
                 <tbody>
@@ -40,10 +47,35 @@
                                     <i class="material-icons text-danger">close</i>
                                 {% endif %}
                             </td>
+                            <td class="text-right text-nowrap">
+                                <a class="btn btn-sm btn-outline-secondary"
+                                   href="{{ path('ps_webhooks_edit', {id: webhook.id}) }}">
+                                    {{ 'Edit'|trans({}, 'Modules.Pswebhooks.Admin') }}
+                                </a>
+
+                                <form method="post" class="d-inline"
+                                      action="{{ path('ps_webhooks_toggle', {id: webhook.id}) }}">
+                                    <input type="hidden" name="_csrf_token"
+                                           value="{{ csrf_token('ps_webhooks_toggle_' ~ webhook.id) }}">
+                                    <button type="submit" class="btn btn-sm btn-outline-secondary">
+                                        {{ (webhook.active ? 'Disable' : 'Enable')|trans({}, 'Modules.Pswebhooks.Admin') }}
+                                    </button>
+                                </form>
+
+                                <form method="post" class="d-inline"
+                                      action="{{ path('ps_webhooks_delete', {id: webhook.id}) }}"
+                                      onsubmit="return confirm('{{ 'Delete this webhook?'|trans({}, 'Modules.Pswebhooks.Admin')|e('js') }}');">
+                                    <input type="hidden" name="_csrf_token"
+                                           value="{{ csrf_token('ps_webhooks_delete_' ~ webhook.id) }}">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger">
+                                        {{ 'Delete'|trans({}, 'Modules.Pswebhooks.Admin') }}
+                                    </button>
+                                </form>
+                            </td>
                         </tr>
                     {% else %}
                         <tr>
-                            <td colspan="6">{{ 'No webhooks configured yet.'|trans({}, 'Modules.Pswebhooks.Admin') }}</td>
+                            <td colspan="7">{{ 'No webhooks configured yet.'|trans({}, 'Modules.Pswebhooks.Admin') }}</td>
                         </tr>
                     {% endfor %}
                 </tbody>

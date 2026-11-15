@@ -1,6 +1,32 @@
 # Таблица маршрутов модуля: «по такому адресу запусти такой метод».
-# YAML устроен отступами: вложенность задаётся двумя пробелами (табуляция не допускается).
+# Вложенность задаётся двумя пробелами, табуляция в YAML недопустима.
 ps_webhooks_index:
   path: /ps_webhooks
   methods: GET
   controller: PrestaShop\Module\PsWebhooks\Controller\Admin\WebhookController::indexAction
+
+ps_webhooks_create:
+  path: /ps_webhooks/new
+  methods: [GET, POST]
+  controller: PrestaShop\Module\PsWebhooks\Controller\Admin\WebhookController::createAction
+
+ps_webhooks_edit:
+  path: /ps_webhooks/{id}/edit
+  methods: [GET, POST]
+  controller: PrestaShop\Module\PsWebhooks\Controller\Admin\WebhookController::editAction
+  requirements:
+    id: \d+
+
+ps_webhooks_toggle:
+  path: /ps_webhooks/{id}/toggle
+  methods: POST
+  controller: PrestaShop\Module\PsWebhooks\Controller\Admin\WebhookController::toggleAction
+  requirements:
+    id: \d+
+
+ps_webhooks_delete:
+  path: /ps_webhooks/{id}/delete
+  methods: POST
+  controller: PrestaShop\Module\PsWebhooks\Controller\Admin\WebhookController::deleteAction
+  requirements:
+    id: \d+

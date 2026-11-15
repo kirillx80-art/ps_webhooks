@@ -5,11 +5,15 @@ services:
     autoconfigure: true # служебные теги выставляются по типу класса
     public: true # сервис доступен из контейнера
 
-  # Все классы из папки контроллеров становятся контроллерами-сервисами
+  # Контроллеры
   PrestaShop\Module\PsWebhooks\Controller\Admin\:
     resource: "../src/Controller/Admin/"
     tags: ["controller.service_arguments"] # разрешает подставлять сервисы в аргументы методов
 
-  # Репозиторий: контроллер получит его автоматически
+  # Репозиторий
   PrestaShop\Module\PsWebhooks\Repository\:
     resource: "../src/Repository/"
+
+  # Служебные классы (подписка на хуки, отправка запросов)
+  PrestaShop\Module\PsWebhooks\Service\:
+    resource: "../src/Service/"

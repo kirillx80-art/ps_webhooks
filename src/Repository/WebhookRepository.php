@@ -45,6 +45,18 @@ final class WebhookRepository
     }
 
     /**
+     * Все активные вебхуки (нужны, чтобы понять, на какие хуки подписан модуль).
+     *
+     * @return list<Webhook>
+     */
+    public function findActive(): array
+    {
+        return $this->fetch(
+            'SELECT * FROM `' . _DB_PREFIX_ . self::TABLE . '` WHERE `active` = 1'
+        );
+    }
+
+    /**
      * @return list<Webhook>
      */
     public function findAll(): array
