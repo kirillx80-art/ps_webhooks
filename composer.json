@@ -9,10 +9,7 @@
     "autoload": {
         "psr-4": {
             "PrestaShop\\Module\\PsWebhooks\\": "src/"
-        },
-        "classmap": [
-            "classes/"
-        ]
+        }
     },
     "config": {
         "optimize-autoloader": true,
