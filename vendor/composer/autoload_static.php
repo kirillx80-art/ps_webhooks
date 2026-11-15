@@ -6,15 +6,31 @@ namespace Composer\Autoload;
 
 class ComposerStaticInit1153e73085d490d1f99e9a1fcba3f80f
 {
+    public static $prefixLengthsPsr4 = array (
+        'P' =>
+        array (
+            'PrestaShop\\Module\\PsWebhooks\\' => 29,
+        ),
+    );
+
+    public static $prefixDirsPsr4 = array (
+        'PrestaShop\\Module\\PsWebhooks\\' =>
+        array (
+            0 => __DIR__ . '/../..' . '/src',
+        ),
+    );
+
     public static $classMap = array (
         'Composer\\InstalledVersions' => __DIR__ . '/..' . '/composer/InstalledVersions.php',
-        'ExpertoPrestaShop\\Mcp\\WebhookMcpTools' => __DIR__ . '/../..' . '/src/WebhookMcpTools.php',
+        'PrestaShop\\Module\\PsWebhooks\\Service\\WebhookSender' => __DIR__ . '/../..' . '/src/Service/WebhookSender.php',
         'Webhook' => __DIR__ . '/../..' . '/classes/Webhook.php',
     );
 
     public static function getInitializer(ClassLoader $loader)
     {
         return \Closure::bind(function () use ($loader) {
+            $loader->prefixLengthsPsr4 = ComposerStaticInit1153e73085d490d1f99e9a1fcba3f80f::$prefixLengthsPsr4;
+            $loader->prefixDirsPsr4 = ComposerStaticInit1153e73085d490d1f99e9a1fcba3f80f::$prefixDirsPsr4;
             $loader->classMap = ComposerStaticInit1153e73085d490d1f99e9a1fcba3f80f::$classMap;
 
         }, null, ClassLoader::class);

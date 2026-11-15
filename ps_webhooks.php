@@ -15,6 +15,8 @@
  * @license   https://opensource.org/licenses/AFL-3.0  Academic Free License ("AFL") v. 3.0
  */
 
+use PrestaShop\Module\PsWebhooks\Service\WebhookSender;
+
 if (!defined('_PS_VERSION_')) {
     exit;
 }
@@ -44,16 +46,8 @@ class Ps_Webhooks extends Module
             'Modules.Pswebhooks.Admin'
         );
 
-        if (!function_exists('curl_init')) {
-            $this->warning = $this->trans(
-                'To be able to use this module, please activate cURL (PHP extension).',
-                [],
-                'Modules.Pswebhooks.Admin'
-            );
-        }
-
         // Пункт меню. Вкладка создаётся при установке и удаляется при удалении модуля автоматически.
-        // Без route_name она пока ведёт на старый контроллер AdminWebhooks.
+        // Пока без route_name: она ведёт на старый контроллер AdminWebhooks.
         $this->tabs = [
             [
                 'name' => 'Webhooks',
@@ -121,98 +115,46 @@ class Ps_Webhooks extends Module
      * PHP вызывает __call, когда вызванного метода в классе нет.
      *
      * @param string $name   Имя вызванного метода, например hookActionObjectProductAddAfter
-     * @param array  $params Аргументы вызова
+     * @param array  $params Аргументы вызова: $params[0] — массив параметров хука
      */
     public function __call($name, $params)
     {
         if (str_starts_with($name, 'hookActionObject')) {
-            return $this->executeHook(str_replace(['hookActionObject', 'After'], '', $name), $params[0]);
+            $this->executeHook(
+                str_replace(['hookActionObject', 'After'], '', $name),
+                $params[0] ?? []
+            );
         }
 
         return null;
     }
 
     /**
-     * Execute a hook and send data to the webhook
+     * Находит вебхуки, подписанные на событие, и отправляет им данные объекта.
      *
-     * @param string $hook_name Name of the hook to execute
-     * @param array $params Hook parameters
-     * @return void
+     * @param string $hookName Имя события без обрамления, например ProductAdd
+     * @param array  $params   Параметры хука, объект лежит под ключом 'object'
      */
-    public function executeHook($hook_name, $params)
+    public function executeHook(string $hookName, array $params): void
     {
-        $ids_webhooks = Webhook::getIdsByActionEntity($hook_name);
-        if (!$ids_webhooks) {
+        $idsWebhooks = Webhook::getIdsByActionEntity($hookName);
+        if (empty($idsWebhooks)) {
             return;
         }
 
-        $object = $params['object'];
+        $object = $params['object'] ?? null;
+        if (!is_object($object)) {
+            return;
+        }
+
+        // Точка расширения: другие модули могут подписаться и изменить объект перед отправкой
         Hook::exec('actionObjectWebhookSendBefore', ['object' => $object]);
 
-        foreach ($ids_webhooks as $id_webhook) {
-            $webhook = new Webhook($id_webhook);
-            self::executeUrl($webhook->url, $webhook->action, $webhook->entity, $object);
+        $sender = new WebhookSender();
+        foreach ($idsWebhooks as $idWebhook) {
+            $webhook = new Webhook((int) $idWebhook);
+            $sender->send($webhook->url, $webhook->action, $webhook->entity, $object);
         }
-    }
-
-    /**
-     * Send HTTP request to the specified URL to trigger the webhook
-     * 
-     * @param string $url The target URL for the webhook
-     * @param string $action The action performed (add, update, delete)
-     * @param string $entity The type of entity concerned
-     * @param object $object The object to send
-     * @param bool $test If true, performs a connection test
-     * @return int|bool HTTP code or false on error
-     */
-    public static function executeUrl($url, $action, $entity, $object, $test = false)
-    {
-        // Security: Validate that the entity is a valid class inheriting from ObjectModel
-        if (!class_exists($entity) || !is_subclass_of($entity, 'ObjectModel')) {
-            return false;
-        }
-
-        // Security: Filter sensitive data before sending
-        $object_vars = get_object_vars($object);
-        unset($object_vars['passwd']);
-        unset($object_vars['secure_key']);
-        unset($object_vars['password']);
-
-        $curl = curl_init($url);
-        $curl_options = [
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_NOBODY => true,
-            CURLOPT_HTTPHEADER => [
-                'Content-Type: application/json',
-                'Accept: application/json'
-            ],
-            CURLOPT_FOLLOWLOCATION => true,
-            CURLOPT_FORBID_REUSE => true,
-            CURLOPT_CONNECTTIMEOUT => 3,
-            CURLOPT_TIMEOUT => 3,
-            // Security: Enable SSL verification to prevent MITM attacks when using HTTPS
-            CURLOPT_SSL_VERIFYHOST => Tools::usingSecureMode(),
-            CURLOPT_SSL_VERIFYPEER => Tools::usingSecureMode(),
-            CURLOPT_POST => true,
-            CURLOPT_POSTFIELDS => json_encode(['action' => $action, 'entity' => $entity, 'data' => $object_vars]),
-        ];
-        curl_setopt_array($curl, $curl_options);
-
-        if ($test) {
-            $curl_options = [
-                CURLOPT_NOBODY => false,
-                CURLOPT_FORBID_REUSE => false,
-            ];
-            curl_setopt_array($curl, $curl_options);
-        }
-
-        curl_exec($curl);
-
-        $code = curl_getinfo($curl, CURLINFO_HTTP_CODE);
-
-        curl_close($curl);
-
-        return $code;
     }
 
     public function isMcpCompliant(): bool

@@ -7,6 +7,6 @@ $baseDir = dirname($vendorDir);
 
 return array(
     'Composer\\InstalledVersions' => $vendorDir . '/composer/InstalledVersions.php',
-    'ExpertoPrestaShop\\Mcp\\WebhookMcpTools' => $baseDir . '/src/WebhookMcpTools.php',
+    'PrestaShop\\Module\\PsWebhooks\\Service\\WebhookSender' => $baseDir . '/src/Service/WebhookSender.php',
     'Webhook' => $baseDir . '/classes/Webhook.php',
 );
