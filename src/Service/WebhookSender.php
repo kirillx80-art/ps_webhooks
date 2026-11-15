@@ -20,6 +20,7 @@ declare(strict_types=1);
 namespace PrestaShop\Module\PsWebhooks\Service;
 
 use ObjectModel;
+use PrestaShop\Module\PsWebhooks\Entity\Webhook;
 use PrestaShopLogger;
 use Symfony\Component\HttpClient\HttpClient;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
@@ -67,6 +68,29 @@ final class WebhookSender
             return $response->getStatusCode();
         } catch (Throwable $e) {
             // Недоступный адрес не должен ломать сохранение товара или заказа
+            PrestaShopLogger::addLog('ps_webhooks: ' . $e->getMessage(), 3);
+
+            return false;
+        }
+    }
+
+    /**
+     * Проверка соединения: отправляет на адрес вебхука пустой объект его сущности.
+     * Класс проверяется ДО создания объекта, потому что имя берётся из базы.
+     *
+     * @return int|false HTTP-код ответа или false, если отправить не удалось
+     */
+    public function sendTest(Webhook $webhook): int|false
+    {
+        $class = $webhook->entity;
+
+        if (!class_exists($class) || !is_subclass_of($class, ObjectModel::class)) {
+            return false;
+        }
+
+        try {
+            return $this->send($webhook->url, $webhook->action, $class, new $class());
+        } catch (Throwable $e) {
             PrestaShopLogger::addLog('ps_webhooks: ' . $e->getMessage(), 3);
 
             return false;

@@ -14,10 +14,23 @@
                 <i class="material-icons">webhook</i>
                 {{ 'Webhooks'|trans({}, 'Modules.Pswebhooks.Admin') }} ({{ webhooks|length }})
             </span>
-            <a class="btn btn-primary" href="{{ path('ps_webhooks_create') }}">
-                <i class="material-icons">add_circle_outline</i>
-                {{ 'Add new'|trans({}, 'Modules.Pswebhooks.Admin') }}
-            </a>
+            <span>
+                {% if webhooks|length > 0 %}
+                    <form method="post" class="d-inline"
+                          action="{{ path('ps_webhooks_delete_all') }}"
+                          onsubmit="return confirm('{{ 'Delete all webhooks?'|trans({}, 'Modules.Pswebhooks.Admin')|e('js') }}');">
+                        <input type="hidden" name="_csrf_token" value="{{ csrf_token('ps_webhooks_delete_all') }}">
+                        <button type="submit" class="btn btn-outline-danger">
+                            <i class="material-icons">delete</i>
+                            {{ 'Delete all'|trans({}, 'Modules.Pswebhooks.Admin') }}
+                        </button>
+                    </form>
+                {% endif %}
+                <a class="btn btn-primary" href="{{ path('ps_webhooks_create') }}">
+                    <i class="material-icons">add_circle_outline</i>
+                    {{ 'Add new'|trans({}, 'Modules.Pswebhooks.Admin') }}
+                </a>
+            </span>
         </div>
         <div class="card-body">
             <table class="table">
@@ -48,6 +61,15 @@
                                 {% endif %}
                             </td>
                             <td class="text-right text-nowrap">
+                                <form method="post" class="d-inline"
+                                      action="{{ path('ps_webhooks_test', {id: webhook.id}) }}">
+                                    <input type="hidden" name="_csrf_token"
+                                           value="{{ csrf_token('ps_webhooks_test_' ~ webhook.id) }}">
+                                    <button type="submit" class="btn btn-sm btn-outline-secondary">
+                                        {{ 'Test'|trans({}, 'Modules.Pswebhooks.Admin') }}
+                                    </button>
+                                </form>
+
                                 <a class="btn btn-sm btn-outline-secondary"
                                    href="{{ path('ps_webhooks_edit', {id: webhook.id}) }}">
                                     {{ 'Edit'|trans({}, 'Modules.Pswebhooks.Admin') }}

@@ -24,9 +24,21 @@ ps_webhooks_toggle:
   requirements:
     id: \d+
 
+ps_webhooks_test:
+  path: /ps_webhooks/{id}/test
+  methods: POST
+  controller: PrestaShop\Module\PsWebhooks\Controller\Admin\WebhookController::testAction
+  requirements:
+    id: \d+
+
 ps_webhooks_delete:
   path: /ps_webhooks/{id}/delete
   methods: POST
   controller: PrestaShop\Module\PsWebhooks\Controller\Admin\WebhookController::deleteAction
   requirements:
     id: \d+
+
+ps_webhooks_delete_all:
+  path: /ps_webhooks/delete-all
+  methods: POST
+  controller: PrestaShop\Module\PsWebhooks\Controller\Admin\WebhookController::deleteAllAction

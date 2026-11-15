@@ -23,13 +23,18 @@ use PrestaShop\Module\PsWebhooks\Entity\Webhook;
 use PrestaShop\Module\PsWebhooks\Form\WebhookType;
 use PrestaShop\Module\PsWebhooks\Repository\WebhookRepository;
 use PrestaShop\Module\PsWebhooks\Service\HookSubscriber;
+use PrestaShop\Module\PsWebhooks\Service\WebhookSender;
 use PrestaShopBundle\Controller\Admin\PrestaShopAdminController;
+use PrestaShopBundle\Security\Attribute\AdminSecurity;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
  * Страницы управления вебхуками в админке.
  * Один маршрут из config/routes.yml = один метод, возвращающий Response.
+ *
+ * Права проверяет атрибут #[AdminSecurity]: он читает права сотрудника на вкладку AdminWebhooks
+ * (read, create, update, delete). При отказе сотрудника перенаправляет на список.
  */
 class WebhookController extends PrestaShopAdminController
 {
@@ -39,6 +44,7 @@ class WebhookController extends PrestaShopAdminController
     /**
      * Список вебхуков.
      */
+    #[AdminSecurity("is_granted('read', 'AdminWebhooks')")]
     public function indexAction(WebhookRepository $repository): Response
     {
         return $this->render('@Modules/ps_webhooks/views/templates/Admin/Webhook/index.html.twig', [
@@ -49,6 +55,7 @@ class WebhookController extends PrestaShopAdminController
     /**
      * Форма нового вебхука. GET показывает форму, POST принимает её.
      */
+    #[AdminSecurity("is_granted('create', 'AdminWebhooks')", redirectRoute: 'ps_webhooks_index')]
     public function createAction(
         Request $request,
         WebhookRepository $repository,
@@ -74,6 +81,7 @@ class WebhookController extends PrestaShopAdminController
     /**
      * Форма правки существующего вебхука.
      */
+    #[AdminSecurity("is_granted('update', 'AdminWebhooks')", redirectRoute: 'ps_webhooks_index')]
     public function editAction(
         int $id,
         Request $request,
@@ -111,6 +119,7 @@ class WebhookController extends PrestaShopAdminController
     /**
      * Включает или выключает вебхук.
      */
+    #[AdminSecurity("is_granted('update', 'AdminWebhooks')", redirectRoute: 'ps_webhooks_index')]
     public function toggleAction(
         int $id,
         Request $request,
@@ -136,8 +145,42 @@ class WebhookController extends PrestaShopAdminController
     }
 
     /**
+     * Проверка соединения: отправляет на адрес вебхука пустой объект и показывает код ответа.
+     */
+    #[AdminSecurity("is_granted('update', 'AdminWebhooks')", redirectRoute: 'ps_webhooks_index')]
+    public function testAction(
+        int $id,
+        Request $request,
+        WebhookRepository $repository,
+        WebhookSender $sender
+    ): Response {
+        $webhook = $repository->find($id);
+
+        if ($webhook !== null && $this->hasValidToken($request, 'ps_webhooks_test_' . $id)) {
+            $code = $sender->sendTest($webhook);
+
+            if ($code !== false && $code >= 200 && $code < 300) {
+                $this->addFlash('success', $this->trans(
+                    'Webhook connection tested: HTTP %code%',
+                    ['%code%' => $code],
+                    self::DOMAIN
+                ));
+            } else {
+                $this->addFlash('error', $this->trans(
+                    'Is not possible to connect to this URL: HTTP %code%',
+                    ['%code%' => $code === false ? 'n/a' : $code],
+                    self::DOMAIN
+                ));
+            }
+        }
+
+        return $this->redirectToRoute('ps_webhooks_index');
+    }
+
+    /**
      * Удаляет вебхук.
      */
+    #[AdminSecurity("is_granted('delete', 'AdminWebhooks')", redirectRoute: 'ps_webhooks_index')]
     public function deleteAction(
         int $id,
         Request $request,
@@ -148,6 +191,24 @@ class WebhookController extends PrestaShopAdminController
             $repository->delete($id);
             $subscriber->sync();
             $this->addFlash('success', $this->trans('Webhook deleted.', [], self::DOMAIN));
+        }
+
+        return $this->redirectToRoute('ps_webhooks_index');
+    }
+
+    /**
+     * Удаляет все вебхуки и снимает подписки модуля на хуки.
+     */
+    #[AdminSecurity("is_granted('delete', 'AdminWebhooks')", redirectRoute: 'ps_webhooks_index')]
+    public function deleteAllAction(
+        Request $request,
+        WebhookRepository $repository,
+        HookSubscriber $subscriber
+    ): Response {
+        if ($this->hasValidToken($request, 'ps_webhooks_delete_all')) {
+            $repository->deleteAll();
+            $subscriber->sync();
+            $this->addFlash('success', $this->trans('All webhooks deleted.', [], self::DOMAIN));
         }
 
         return $this->redirectToRoute('ps_webhooks_index');
